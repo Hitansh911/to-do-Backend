@@ -1,0 +1,19 @@
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: 'auth-service'
+    dns_sd_configs:
+      - names: ['auth-service']
+        type: 'A'
+        port: 5003
+  - job_name: 'notes-service'
+    dns_sd_configs:
+      - names: ['notes-service']
+        type: 'A'
+        port: 5001
+  - job_name: 'todo-service'
+    dns_sd_configs:
+      - names: ['todo-service']
+        type: 'A'
+        port: 5002

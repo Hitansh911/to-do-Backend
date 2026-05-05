@@ -1,0 +1,173 @@
+version: "3.8"
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: notesuser
+      POSTGRES_DB: notesdb
+      POSTGRES_PASSWORD_FILE: /run/secrets/db_password
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - swarm-app-network
+    secrets:
+      - db_password
+
+  redis:
+    image: redis:7-alpine
+    volumes:
+      - redis-data:/data
+    networks:
+      - swarm-app-network
+
+  auth-service:
+    image: ${DOCKERHUB_USERNAME:-yourusername}/notes-todo-auth-service:latest
+    environment:
+      - POSTGRES_USER=notesuser
+      - POSTGRES_PASSWORD_FILE=/run/secrets/db_password
+      - POSTGRES_DB=notesdb
+      - POSTGRES_HOST=postgres
+      - JWT_SECRET_FILE=/run/secrets/jwt_secret
+      - JWT_EXPIRY_HOURS=24
+      - FLASK_ENV=production
+    networks:
+      - swarm-app-network
+    deploy:
+      replicas: 1
+      update_config:
+        parallelism: 1
+        delay: 10s
+      rollback_config:
+        parallelism: 1
+        delay: 5s
+      restart_policy:
+        condition: on-failure
+        max_attempts: 3
+    secrets:
+      - db_password
+      - jwt_secret
+
+  notes-service:
+    image: ${DOCKERHUB_USERNAME:-yourusername}/notes-todo-notes-service:latest
+    environment:
+      - POSTGRES_USER=notesuser
+      - POSTGRES_PASSWORD_FILE=/run/secrets/db_password
+      - POSTGRES_DB=notesdb
+      - POSTGRES_HOST=postgres
+      - REDIS_URL=redis://redis:6379/0
+      - JWT_SECRET_FILE=/run/secrets/jwt_secret
+      - FLASK_ENV=production
+    networks:
+      - swarm-app-network
+    deploy:
+      replicas: 2
+      update_config:
+        parallelism: 1
+        delay: 10s
+      rollback_config:
+        parallelism: 1
+        delay: 5s
+      restart_policy:
+        condition: on-failure
+        max_attempts: 3
+    secrets:
+      - db_password
+      - jwt_secret
+
+  todo-service:
+    image: ${DOCKERHUB_USERNAME:-yourusername}/notes-todo-todo-service:latest
+    environment:
+      - POSTGRES_USER=notesuser
+      - POSTGRES_PASSWORD_FILE=/run/secrets/db_password
+      - POSTGRES_DB=notesdb
+      - POSTGRES_HOST=postgres
+      - REDIS_URL=redis://redis:6379/0
+      - JWT_SECRET_FILE=/run/secrets/jwt_secret
+      - FLASK_ENV=production
+    networks:
+      - swarm-app-network
+    deploy:
+      replicas: 2
+      update_config:
+        parallelism: 1
+        delay: 10s
+      rollback_config:
+        parallelism: 1
+        delay: 5s
+      restart_policy:
+        condition: on-failure
+        max_attempts: 3
+    secrets:
+      - db_password
+      - jwt_secret
+
+  nginx:
+    image: nginx:alpine
+    ports:
+      - target: 80
+        published: 80
+        protocol: tcp
+    configs:
+      - source: nginx_config
+        target: /etc/nginx/nginx.conf
+    networks:
+      - swarm-app-network
+    deploy:
+      replicas: 1
+
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - target: 9090
+        published: 9090
+        protocol: tcp
+    configs:
+      - source: prom_config
+        target: /etc/prometheus/prometheus.yml
+    networks:
+      - swarm-app-network
+
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - target: 3000
+        published: 3000
+        protocol: tcp
+    networks:
+      - swarm-app-network
+    deploy:
+      replicas: 1
+
+configs:
+  nginx_config:
+    file: ./nginx/nginx.conf
+  prom_config:
+    content: |
+      global:
+        scrape_interval: 15s
+      scrape_configs:
+        - job_name: 'flask-services'
+          dns_sd_configs:
+            - names:
+                - 'auth-service'
+                - 'notes-service'
+                - 'todo-service'
+              type: 'A'
+              port: 5001
+              port: 5002
+              port: 5003
+
+secrets:
+  db_password:
+    external: true
+  jwt_secret:
+    external: true
+
+volumes:
+  postgres-data:
+  redis-data:
+
+networks:
+  swarm-app-network:
+    driver: overlay
