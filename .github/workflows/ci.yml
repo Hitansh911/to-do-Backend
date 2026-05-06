@@ -35,7 +35,7 @@ jobs:
           cache-to: type=gha,mode=max,scope=${{ matrix.service }}
 
       - name: Run Unit Tests
-        run: docker run --rm notes-todo-${{ matrix.service }}:latest python -m pytest tests/ -v
+        run: docker run --rm -v ${{ github.workspace }}/${{ matrix.service }}/tests:/app/tests notes-todo-${{ matrix.service }}:latest python -m pytest tests/ -v
 
   security-scan:
     needs: build-and-test
