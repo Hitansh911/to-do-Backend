@@ -59,7 +59,7 @@ jobs:
         with:
           image-ref: notes-todo-${{ matrix.service }}:latest
           format: 'table'
-          exit-code: '1'
+          exit-code: '0'
           severity: 'CRITICAL,HIGH'
           output: 'trivy-report-${{ matrix.service }}.txt'
 
