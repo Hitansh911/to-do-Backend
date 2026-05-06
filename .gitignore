@@ -13,3 +13,16 @@ redis-data/
 *.log
 .DS_Store
 docker-stack-deploy.yml
+
+# Node.js & Next.js
+node_modules/
+.next/
+out/
+build/
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/sdks
+!.yarn/versions
